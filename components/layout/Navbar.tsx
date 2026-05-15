@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Menu, X } from 'lucide-react'
+import ThemeToggle from '@/components/ui/ThemeToggle'
 
 const navLinks = [
   { label: 'Home', href: '/' },
@@ -23,7 +24,9 @@ export default function Navbar() {
   }, [])
 
   const headerStyle: React.CSSProperties = {
-    background: scrolled ? 'rgba(255,255,255,0.97)' : 'transparent',
+    background: scrolled
+      ? 'rgba(var(--bg-rgb), 0.97)'
+      : 'transparent',
     backdropFilter: scrolled ? 'blur(12px)' : 'none',
     borderBottom: '1px solid var(--line)',
   }
@@ -160,6 +163,9 @@ export default function Navbar() {
             >
               Book Now
             </Link>
+
+            {/* Theme toggle */}
+            <ThemeToggle />
 
             {/* Mobile hamburger */}
             <button

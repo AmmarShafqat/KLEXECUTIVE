@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import { Cormorant_Garamond, Manrope, JetBrains_Mono } from 'next/font/google'
 import './globals.css'
+import { THEME_MODE } from '@/lib/theme-config'
 
 const manrope = Manrope({
   subsets: ['latin'],
@@ -82,6 +83,13 @@ export const metadata: Metadata = {
   },
 }
 
+const themeInitScript =
+  THEME_MODE === 'light'
+    ? `document.documentElement.classList.remove('dark');`
+    : THEME_MODE === 'dark'
+      ? `document.documentElement.classList.add('dark');`
+      : `(function(){try{var t=localStorage.getItem('klexec-theme');var d=t==='dark'||(!t&&window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`
+
 export default function RootLayout({
   children,
 }: {
@@ -91,7 +99,11 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${manrope.variable} ${cormorant.variable} ${jetbrains.variable}`}
+      suppressHydrationWarning
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
       <body className="antialiased">{children}</body>
     </html>
   )

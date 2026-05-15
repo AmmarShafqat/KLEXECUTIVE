@@ -3,6 +3,7 @@
 @tailwind utilities;
 
 :root {
+  color-scheme: light;
   --bg: #ffffff;
   --bg-2: #f7f5ef;
   --bg-3: #ece8dd;
@@ -15,6 +16,26 @@
   --gold: #a88a4f;
   --gold-soft: #c9b07a;
   --gold-deep: #8c7038;
+  --bg-rgb: 255, 255, 255;
+  --ink-rgb: 42, 40, 37;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #0f0d0a;
+  --bg-2: #181613;
+  --bg-3: #22201c;
+  --ink: #f1ede2;
+  --ink-2: #fbf8ef;
+  --ink-3: #b8b3a5;
+  --ink-4: #7a766c;
+  --line: #2a2825;
+  --line-2: #3a3733;
+  --gold: #c9b07a;
+  --gold-soft: #d9c69a;
+  --gold-deep: #a88a4f;
+  --bg-rgb: 15, 13, 10;
+  --ink-rgb: 241, 237, 226;
 }
 
 @layer base {
