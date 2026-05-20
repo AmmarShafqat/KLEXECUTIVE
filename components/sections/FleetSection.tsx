@@ -197,7 +197,7 @@ export default function FleetSection() {
               className="object-contain"
               style={{ padding: '24px' }}
               sizes="(max-width: 768px) 100vw, 65vw"
-              priority
+              loading="lazy"
             />
 
             {/* Frame tag top-left */}

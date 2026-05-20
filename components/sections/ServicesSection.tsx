@@ -175,7 +175,7 @@ export default function ServicesSection() {
                     fill
                     className="object-cover"
                     sizes="140px"
-                    loading={i < 3 ? 'eager' : 'lazy'}
+                    loading="lazy"
                   />
                 </div>
               </Link>

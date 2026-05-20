@@ -339,9 +339,8 @@ export default function HeroSection() {
                 src="/images/heromain.webp"
                 alt="KL Executive chauffeur opening door for a client"
                 fill
-                priority
-                fetchPriority="high"
-                quality={85}
+                loading="lazy"
+                quality={75}
                 className="object-cover animate-heroPan"
                 sizes="(max-width: 900px) 0vw, 600px"
               />

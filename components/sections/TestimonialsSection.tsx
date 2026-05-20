@@ -186,6 +186,7 @@ export default function TestimonialsSection() {
               {/* Stars */}
               <div
                 className="flex items-center gap-1 mb-5"
+                role="img"
                 aria-label={`${t.rating} out of 5 stars`}
               >
                 {Array.from({ length: t.rating }).map((_, si) => (
