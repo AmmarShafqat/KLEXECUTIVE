@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react'
 import { motion, useInView } from 'framer-motion'
+import { submitContactInquiry } from '@/lib/graphql-operations'
 
 const contactRows = [
   {
@@ -41,11 +42,52 @@ const serviceOptions = [
 export default function ContactSection() {
   const ref = useRef<HTMLElement>(null)
   const inView = useInView(ref, { once: true, amount: 0.1 })
-  const [submitted, setSubmitted] = useState(false)
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Controlled form state
+  const [name, setName] = useState('')
+  const [company, setCompany] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [service, setService] = useState('')
+  const [message, setMessage] = useState('')
+
+  // Submission state
+  const [submitting, setSubmitting] = useState(false)
+  const [submitted, setSubmitted] = useState(false)
+  const [responseMsg, setResponseMsg] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSubmitted(true)
+    if (submitting) return
+    setError(null)
+
+    if (!name.trim() || !email.trim()) {
+      setError('Please provide your name and email.')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const msg = await submitContactInquiry({
+        name: name.trim(),
+        company: company.trim() || undefined,
+        email: email.trim(),
+        phone: phone.trim() || undefined,
+        serviceInterest: service.trim() || undefined,
+        message: message.trim() || undefined,
+      })
+      setResponseMsg(msg)
+      setSubmitted(true)
+    } catch (err) {
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'Could not send your enquiry. Please try again.',
+      )
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const inputStyle: React.CSSProperties = {
@@ -241,12 +283,27 @@ export default function ContactSection() {
                     Thank you.
                   </div>
                   <p style={{ fontSize: '14px', color: 'var(--ink-3)' }}>
-                    Your enquiry has been received. We will be in touch within
-                    15 minutes.
+                    {responseMsg ??
+                      'Your enquiry has been received. We will be in touch within 15 minutes.'}
                   </p>
                 </div>
               ) : (
                 <form onSubmit={handleSubmit} noValidate>
+                  {error && (
+                    <div
+                      role="alert"
+                      style={{
+                        padding: '10px 14px',
+                        marginBottom: 16,
+                        background: 'rgba(160,41,41,0.06)',
+                        border: '1px solid rgba(160,41,41,0.25)',
+                        color: '#a02929',
+                        fontSize: 13,
+                      }}
+                    >
+                      {error}
+                    </div>
+                  )}
                   {/* Row: Full Name + Company */}
                   <div className="flex gap-4 mb-5">
                     <div style={{ flex: 1 }}>
@@ -270,6 +327,8 @@ export default function ContactSection() {
                         type="text"
                         required
                         placeholder="Your full name"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
                         style={inputStyle}
                         onFocus={(e) => {
                           (e.target as HTMLInputElement).style.borderBottomColor =
@@ -301,6 +360,8 @@ export default function ContactSection() {
                         id="company"
                         type="text"
                         placeholder="Company (optional)"
+                        value={company}
+                        onChange={(e) => setCompany(e.target.value)}
                         style={inputStyle}
                         onFocus={(e) => {
                           (e.target as HTMLInputElement).style.borderBottomColor =
@@ -337,6 +398,8 @@ export default function ContactSection() {
                         type="email"
                         required
                         placeholder="you@company.com"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
                         style={inputStyle}
                         onFocus={(e) => {
                           (e.target as HTMLInputElement).style.borderBottomColor =
@@ -368,6 +431,8 @@ export default function ContactSection() {
                         id="phone"
                         type="tel"
                         placeholder="+1 (212) XXX-XXXX"
+                        value={phone}
+                        onChange={(e) => setPhone(e.target.value)}
                         style={inputStyle}
                         onFocus={(e) => {
                           (e.target as HTMLInputElement).style.borderBottomColor =
@@ -400,6 +465,8 @@ export default function ContactSection() {
                     </label>
                     <select
                       id="service"
+                      value={service}
+                      onChange={(e) => setService(e.target.value)}
                       style={{
                         ...inputStyle,
                         cursor: 'pointer',
@@ -443,6 +510,8 @@ export default function ContactSection() {
                       id="message"
                       rows={4}
                       placeholder="Pickup location, date &amp; time, number of passengers, any special requests…"
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
                       style={{
                         ...inputStyle,
                         resize: 'vertical',
@@ -477,9 +546,14 @@ export default function ContactSection() {
                     <button
                       type="submit"
                       className="btn btn-primary"
-                      style={{ whiteSpace: 'nowrap' }}
+                      disabled={submitting}
+                      style={{
+                        whiteSpace: 'nowrap',
+                        opacity: submitting ? 0.6 : 1,
+                        cursor: submitting ? 'wait' : 'pointer',
+                      }}
                     >
-                      Request a quote →
+                      {submitting ? 'Sending…' : 'Request a quote →'}
                     </button>
                   </div>
                 </form>
