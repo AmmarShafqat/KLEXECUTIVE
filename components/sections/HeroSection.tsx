@@ -1,13 +1,78 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
+import dynamic from "next/dynamic";
 import { Clock, Calendar, Shield } from "lucide-react";
+import type { Place, RouteSummary } from "@/components/map/BookingMapEnhancer";
 
 type Tab = "one-way" | "hourly" | "round-trip";
 
+const BookingMapEnhancer = dynamic(
+  () => import("@/components/map/BookingMapEnhancer"),
+  { ssr: false, loading: () => null }
+);
+
+const BrandDatePicker = dynamic(
+  () => import("@/components/booking/BrandDatePicker"),
+  { ssr: false }
+);
+
+const BrandTimePicker = dynamic(
+  () => import("@/components/booking/BrandTimePicker"),
+  { ssr: false }
+);
+
 export default function HeroSection() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<Tab>("one-way");
+  const [mapEnabled, setMapEnabled] = useState(false);
+  const [pickup, setPickup] = useState<Place | null>(null);
+  const [destination, setDestination] = useState<Place | null>(null);
+  const [route, setRoute] = useState<RouteSummary | null>(null);
+  const [date, setDate] = useState("");
+  const [time, setTime] = useState("");
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const pickupRef = useRef<HTMLInputElement>(null);
+  const destRef = useRef<HTMLInputElement>(null);
+  const enableMap = () => setMapEnabled(true);
+
+  // Earliest allowed booking date = today
+  const today = new Date();
+
+  function handleGetPrices() {
+    setSubmitError(null);
+    if (!pickup || !destination) {
+      setSubmitError("Please pick both an origin and a destination.");
+      return;
+    }
+    if (!date || !time) {
+      setSubmitError("Please pick a date and time.");
+      return;
+    }
+    if (!route) {
+      setSubmitError(
+        "Calculating route — give it a second after picking both addresses.",
+      );
+      return;
+    }
+    const pickupAt = new Date(`${date}T${time}:00`);
+    if (Number.isNaN(pickupAt.getTime())) {
+      setSubmitError("Invalid date or time.");
+      return;
+    }
+
+    const params = new URLSearchParams({
+      pickup: pickup.address,
+      destination: destination.address,
+      pickupAt: pickupAt.toISOString(),
+      miles: route.miles.toFixed(2),
+      minutes: String(route.minutes),
+      serviceType: activeTab,
+    });
+    router.push(`/quote?${params.toString()}`);
+  }
 
   const tabs: { id: Tab; label: string }[] = [
     { id: "one-way", label: "One Way" },
@@ -137,9 +202,12 @@ export default function HeroSection() {
                     Pickup Location
                   </label>
                   <input
+                    ref={pickupRef}
                     id="pickup"
                     type="text"
                     placeholder="Enter pickup address"
+                    autoComplete="off"
+                    onFocus={enableMap}
                     style={{
                       width: "100%",
                       border: "none",
@@ -175,9 +243,12 @@ export default function HeroSection() {
                       Destination
                     </label>
                     <input
+                      ref={destRef}
                       id="destination"
                       type="text"
                       placeholder="Enter destination"
+                      autoComplete="off"
+                      onFocus={enableMap}
                       style={{
                         width: "100%",
                         border: "none",
@@ -190,84 +261,27 @@ export default function HeroSection() {
                   </div>
                 )}
 
-                <div className="flex gap-3">
-                  <div
-                    style={{
-                      flex: 1,
-                      border: "1px solid var(--line)",
-                      borderRadius: "6px",
-                      padding: "12px 14px",
-                    }}
-                  >
-                    <label
-                      style={{
-                        fontSize: "9px",
-                        letterSpacing: "0.16em",
-                        textTransform: "uppercase",
-                        color: "var(--ink-4)",
-                        display: "block",
-                        marginBottom: "4px",
-                        fontFamily:
-                          "var(--font-jetbrains), ui-monospace, monospace",
-                      }}
-                      htmlFor="date"
-                    >
-                      Date
-                    </label>
-                    <input
-                      id="date"
-                      type="date"
-                      style={{
-                        width: "100%",
-                        border: "none",
-                        outline: "none",
-                        fontSize: "14px",
-                        color: "var(--ink)",
-                        background: "transparent",
-                      }}
-                    />
-                  </div>
-                  <div
-                    style={{
-                      flex: 1,
-                      border: "1px solid var(--line)",
-                      borderRadius: "6px",
-                      padding: "12px 14px",
-                    }}
-                  >
-                    <label
-                      style={{
-                        fontSize: "9px",
-                        letterSpacing: "0.16em",
-                        textTransform: "uppercase",
-                        color: "var(--ink-4)",
-                        display: "block",
-                        marginBottom: "4px",
-                        fontFamily:
-                          "var(--font-jetbrains), ui-monospace, monospace",
-                      }}
-                      htmlFor="time"
-                    >
-                      Time
-                    </label>
-                    <input
-                      id="time"
-                      type="time"
-                      style={{
-                        width: "100%",
-                        border: "none",
-                        outline: "none",
-                        fontSize: "14px",
-                        color: "var(--ink)",
-                        background: "transparent",
-                      }}
-                    />
-                  </div>
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <BrandDatePicker
+                    id="date"
+                    label="Date"
+                    value={date}
+                    onChange={setDate}
+                    minDate={today}
+                  />
+                  <BrandTimePicker
+                    id="time"
+                    label="Time"
+                    value={time}
+                    onChange={setTime}
+                  />
                 </div>
               </div>
 
               {/* CTA button */}
               <button
+                type="button"
+                onClick={handleGetPrices}
                 style={{
                   marginTop: "16px",
                   width: "100%",
@@ -298,23 +312,53 @@ export default function HeroSection() {
               >
                 Get my prices →
               </button>
+
+              {submitError && (
+                <div
+                  role="alert"
+                  style={{
+                    marginTop: "10px",
+                    fontSize: "12px",
+                    color: "#a02929",
+                    textAlign: "center",
+                  }}
+                >
+                  {submitError}
+                </div>
+              )}
             </div>
 
-            {/* Trust line */}
+            {/* Trust line — clusters wrap as atomic units so the dot
+                separators never orphan at the end of a line */}
             <div
-              className="flex items-center gap-3 flex-wrap"
-              style={{ fontSize: "13px", color: "var(--ink-3)" }}
+              className="flex items-center flex-wrap"
+              style={{
+                fontSize: "13px",
+                color: "var(--ink-3)",
+                columnGap: "14px",
+                rowGap: "6px",
+              }}
             >
-              <span style={{ color: "var(--gold)", letterSpacing: "2px" }}>
-                ★★★★★
-              </span>
-              <span style={{ fontWeight: 600, color: "var(--ink)" }}>4.97</span>
-              <span style={{ color: "var(--line-2)" }}>·</span>
-              <span>500+ reviews</span>
-              <span style={{ color: "var(--line-2)" }}>·</span>
-              <span>New York City</span>
-              <span style={{ color: "var(--line-2)" }}>·</span>
-              <span>24/7</span>
+              <div className="flex items-center" style={{ gap: "10px" }}>
+                <span
+                  style={{
+                    color: "var(--gold)",
+                    letterSpacing: "2px",
+                  }}
+                >
+                  ★★★★★
+                </span>
+                <span style={{ fontWeight: 600, color: "var(--ink)" }}>
+                  4.97
+                </span>
+                <span style={{ color: "var(--line-2)" }}>·</span>
+                <span>500+ reviews</span>
+              </div>
+              <div className="flex items-center" style={{ gap: "10px" }}>
+                <span>New York City</span>
+                <span style={{ color: "var(--line-2)" }}>·</span>
+                <span>24/7</span>
+              </div>
             </div>
           </div>
 
@@ -323,7 +367,7 @@ export default function HeroSection() {
             className="hero-image"
             style={{ position: "relative", minHeight: "540px" }}
           >
-            {/* Main frame */}
+            {/* Main frame — map slot (replaces hero image) */}
             <div
               className="frame"
               style={{
@@ -335,26 +379,39 @@ export default function HeroSection() {
                 position: "relative",
               }}
             >
-              <Image
-                src="/images/heromain.webp"
-                alt="KL Executive chauffeur opening door for a client"
-                fill
-                loading="lazy"
-                quality={75}
-                className="object-cover animate-heroPan"
-                sizes="(max-width: 900px) 0vw, 600px"
-              />
-              {/* Bottom gradient overlay */}
+              {!mapEnabled && (
+                <Image
+                  src="/images/heromain.webp"
+                  alt="KL Executive chauffeur opening door for a client"
+                  fill
+                  loading="lazy"
+                  quality={75}
+                  className="object-cover animate-heroPan"
+                  sizes="(max-width: 900px) 0vw, 600px"
+                />
+              )}
               <div
-                aria-hidden="true"
+                id="hero-map-slot"
                 style={{
                   position: "absolute",
                   inset: 0,
-                  background:
-                    "linear-gradient(to top, rgba(20,18,12,0.25) 0%, transparent 50%)",
-                  pointerEvents: "none",
+                  width: "100%",
+                  height: "100%",
+                  background: mapEnabled ? "var(--bg-2)" : "transparent",
                 }}
               />
+              {!mapEnabled && (
+                <div
+                  aria-hidden="true"
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background:
+                      "linear-gradient(to top, rgba(20,18,12,0.25) 0%, transparent 50%)",
+                    pointerEvents: "none",
+                  }}
+                />
+              )}
             </div>
 
             {/* Pill TL — Perfectly Timed */}
@@ -531,6 +588,20 @@ export default function HeroSection() {
         </div>
       </div>
 
+      {/* Google Maps SDK loads only after user focuses pickup/destination — keeps initial bundle untouched */}
+      {mapEnabled && (
+        <BookingMapEnhancer
+          pickupRef={pickupRef}
+          destRef={destRef}
+          pickup={pickup}
+          destination={destination}
+          onPickup={setPickup}
+          onDestination={setDestination}
+          onRoute={setRoute}
+          mapSlotId="hero-map-slot"
+        />
+      )}
+
       {/* Responsive: stack on mobile */}
       <style>{`
         .hero-grid {
@@ -543,6 +614,84 @@ export default function HeroSection() {
             gap: 48px !important;
           }
           .hero-image { display: none; }
+        }
+        /* Google Places Autocomplete dropdown — keep it above floating pills */
+        .pac-container {
+          z-index: 9999 !important;
+          border-radius: 8px;
+          box-shadow: 0 12px 40px rgba(40,30,10,0.18);
+          border: 1px solid var(--line);
+          font-family: var(--font-manrope), system-ui, sans-serif;
+        }
+        .pac-item {
+          padding: 8px 12px;
+          font-size: 13px;
+        }
+
+        /* Date / time picker field — hover + open states */
+        .pickfield:hover { border-color: var(--line-2) !important; }
+
+        /* react-day-picker brand theme overrides */
+        .rdp-root {
+          --rdp-accent-color: var(--gold);
+          --rdp-accent-background-color: var(--gold);
+          --rdp-today-color: var(--ink);
+          --rdp-day_button-border-radius: 4px;
+          --rdp-selected-border: 0;
+          font-family: var(--font-manrope), system-ui, sans-serif;
+          color: var(--ink);
+          margin: 0;
+        }
+        .rdp-caption_label, .rdp-month_caption {
+          font-family: var(--font-cormorant), Georgia, serif;
+          font-weight: 500;
+          color: var(--ink);
+          font-size: 16px;
+        }
+        .rdp-weekday {
+          font-family: var(--font-jetbrains), ui-monospace, monospace;
+          font-size: 10px;
+          letter-spacing: 0.12em;
+          text-transform: uppercase;
+          color: var(--ink-3);
+          font-weight: 400;
+        }
+        .rdp-day_button {
+          font-size: 13px;
+          font-variant-numeric: tabular-nums;
+          color: var(--ink);
+        }
+        .rdp-day_button:hover:not([disabled]) {
+          background: var(--bg-2);
+          color: var(--ink);
+        }
+        .rdp-selected .rdp-day_button {
+          background: var(--gold);
+          color: #fff;
+          font-weight: 600;
+        }
+        .rdp-today:not(.rdp-selected) .rdp-day_button {
+          color: var(--gold);
+          font-weight: 600;
+        }
+        .rdp-outside .rdp-day_button {
+          color: var(--ink-4);
+        }
+        .rdp-disabled .rdp-day_button {
+          color: var(--ink-4);
+          opacity: 0.55;
+          cursor: not-allowed;
+        }
+        .rdp-disabled .rdp-day_button:hover {
+          background: transparent !important;
+        }
+        .rdp-nav button {
+          color: var(--ink-3);
+          border-radius: 4px;
+        }
+        .rdp-nav button:hover {
+          background: var(--bg-2);
+          color: var(--ink);
         }
       `}</style>
     </section>
