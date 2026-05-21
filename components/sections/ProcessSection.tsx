@@ -149,7 +149,7 @@ export default function ProcessSection() {
                   />
                 </div>
 
-                <h4
+                <h3
                   className="font-display"
                   style={{
                     fontSize: '26px',
@@ -159,7 +159,7 @@ export default function ProcessSection() {
                   }}
                 >
                   {step.title}
-                </h4>
+                </h3>
 
                 <p
                   style={{

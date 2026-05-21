@@ -12,16 +12,19 @@ const manrope = Manrope({
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
   variable: '--font-cormorant',
-  weight: ['300', '400', '500', '600', '700'],
+  weight: ['500', '400'],
   style: ['normal', 'italic'],
-  display: 'swap',
+  display: 'optional',
+  preload: true,
+  adjustFontFallback: true,
 })
 
 const jetbrains = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-jetbrains',
-  weight: ['300', '400', '500'],
+  weight: ['400', '500'],
   display: 'swap',
+  preload: false,
 })
 
 export const viewport: Viewport = {

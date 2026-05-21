@@ -165,7 +165,7 @@ export default function WhyChooseUsSection() {
 
                 {/* Content */}
                 <div>
-                  <h4
+                  <h3
                     className="font-display"
                     style={{
                       fontSize: '22px',

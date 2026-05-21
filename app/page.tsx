@@ -4,6 +4,7 @@ import HeroSection from '@/components/sections/HeroSection'
 import ProcessSection from '@/components/sections/ProcessSection'
 import ServicesSection from '@/components/sections/ServicesSection'
 import FleetSection from '@/components/sections/FleetSection'
+import CitiesSection from '@/components/sections/CitiesSection'
 import WhyChooseUsSection from '@/components/sections/WhyChooseUsSection'
 import TestimonialsSection from '@/components/sections/TestimonialsSection'
 import AboutSection from '@/components/sections/AboutSection'
@@ -19,6 +20,7 @@ export default function Home() {
         <ProcessSection />
         <ServicesSection />
         <FleetSection />
+        <CitiesSection />
         <WhyChooseUsSection />
         <TestimonialsSection />
         <AboutSection />
