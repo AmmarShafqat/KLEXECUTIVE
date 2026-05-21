@@ -156,3 +156,29 @@ export async function createOrder(
   )
   return data.createOrder
 }
+
+// ── Submit contact inquiry ─────────────────────────────────────────────────
+export type ContactInquiryInput = {
+  name: string
+  company?: string
+  email: string
+  phone?: string
+  serviceInterest?: string
+  message?: string
+}
+
+const SUBMIT_CONTACT_INQUIRY_MUTATION = gql`
+  mutation SubmitContactInquiry($input: ContactInquiryInput!) {
+    submitContactInquiry(input: $input)
+  }
+`
+
+export async function submitContactInquiry(
+  input: ContactInquiryInput,
+): Promise<string> {
+  const data = await getClient().request<{ submitContactInquiry: string }>(
+    SUBMIT_CONTACT_INQUIRY_MUTATION,
+    { input: { ...input, orgSlug: ORG_SLUG } },
+  )
+  return data.submitContactInquiry
+}
