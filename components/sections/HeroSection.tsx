@@ -7,6 +7,8 @@ import dynamic from "next/dynamic";
 import { Clock, Calendar, Shield } from "lucide-react";
 import type { Place, RouteSummary } from "@/components/map/BookingMapEnhancer";
 
+const SINGLE_PAGE = process.env.NEXT_PUBLIC_SINGLE_PAGE === "true";
+
 type Tab = "one-way" | "hourly" | "round-trip";
 
 const BookingMapEnhancer = dynamic(
@@ -34,12 +36,74 @@ export default function HeroSection() {
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // Single-page mode fields
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitSuccess, setSubmitSuccess] = useState(false);
   const pickupRef = useRef<HTMLInputElement>(null);
   const destRef = useRef<HTMLInputElement>(null);
   const enableMap = () => setMapEnabled(true);
 
-  // Earliest allowed booking date = today
   const today = new Date();
+
+  async function handleBookNow() {
+    setSubmitError(null);
+    if (!firstName.trim() || !lastName.trim()) {
+      setSubmitError("Please enter your first and last name.");
+      return;
+    }
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setSubmitError("Please enter a valid email address.");
+      return;
+    }
+    if (!phone.trim()) {
+      setSubmitError("Please enter your telephone number.");
+      return;
+    }
+    if (!pickup) {
+      setSubmitError("Please enter a pickup location.");
+      return;
+    }
+    if (activeTab !== "hourly" && !destination) {
+      setSubmitError("Please enter a destination.");
+      return;
+    }
+    if (!date || !time) {
+      setSubmitError("Please select a date and time.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const res = await fetch("/api/booking", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName,
+          lastName,
+          email,
+          phone,
+          pickup: pickup.address,
+          destination: destination?.address ?? "",
+          date,
+          time,
+          serviceType: activeTab,
+          miles: route?.miles.toFixed(2) ?? "",
+          minutes: route ? String(route.minutes) : "",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Unknown error");
+      setSubmitSuccess(true);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Failed to submit. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
 
   function handleGetPrices() {
     setSubmitError(null);
@@ -96,7 +160,7 @@ export default function HeroSection() {
             display: "grid",
             gridTemplateColumns: "minmax(0, 1.05fr) minmax(0, 1fr)",
             gap: "64px",
-            alignItems: "start",
+            alignItems: "center",
           }}
           className="hero-grid"
         >
@@ -178,48 +242,142 @@ export default function HeroSection() {
               </div>
 
               {/* Inputs */}
-              <div className="flex flex-col gap-3">
+              {submitSuccess ? (
                 <div
                   style={{
-                    border: "1px solid var(--line)",
-                    borderRadius: "6px",
-                    padding: "12px 14px",
+                    padding: "32px 16px",
+                    textAlign: "center",
                   }}
                 >
-                  <label
+                  <div
                     style={{
-                      fontSize: "9px",
-                      letterSpacing: "0.16em",
-                      textTransform: "uppercase",
-                      color: "var(--ink-4)",
-                      display: "block",
-                      marginBottom: "4px",
-                      fontFamily:
-                        "var(--font-jetbrains), ui-monospace, monospace",
+                      width: "48px",
+                      height: "48px",
+                      borderRadius: "50%",
+                      background: "rgba(168,138,79,0.12)",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      margin: "0 auto 16px",
+                      fontSize: "22px",
                     }}
-                    htmlFor="pickup"
                   >
-                    Pickup Location
-                  </label>
-                  <input
-                    ref={pickupRef}
-                    id="pickup"
-                    type="text"
-                    placeholder="Enter pickup address"
-                    autoComplete="off"
-                    onFocus={enableMap}
+                    ✓
+                  </div>
+                  <p
                     style={{
-                      width: "100%",
-                      border: "none",
-                      outline: "none",
-                      fontSize: "14px",
+                      fontSize: "15px",
+                      fontWeight: 600,
                       color: "var(--ink)",
-                      background: "transparent",
+                      marginBottom: "6px",
                     }}
-                  />
+                  >
+                    Request received
+                  </p>
+                  <p style={{ fontSize: "13px", color: "var(--ink-3)" }}>
+                    We&apos;ll be in touch shortly to confirm your booking.
+                  </p>
                 </div>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {SINGLE_PAGE && (
+                    <div className="flex gap-3">
+                      {[
+                        { id: "firstName", label: "First Name", value: firstName, onChange: setFirstName, placeholder: "First name" },
+                        { id: "lastName", label: "Last Name", value: lastName, onChange: setLastName, placeholder: "Last name" },
+                      ].map((f) => (
+                        <div
+                          key={f.id}
+                          style={{
+                            flex: 1,
+                            border: "1px solid var(--line)",
+                            borderRadius: "6px",
+                            padding: "12px 14px",
+                          }}
+                        >
+                          <label
+                            htmlFor={f.id}
+                            style={{
+                              fontSize: "9px",
+                              letterSpacing: "0.16em",
+                              textTransform: "uppercase",
+                              color: "var(--ink-4)",
+                              display: "block",
+                              marginBottom: "4px",
+                              fontFamily: "var(--font-jetbrains), ui-monospace, monospace",
+                            }}
+                          >
+                            {f.label}
+                          </label>
+                          <input
+                            id={f.id}
+                            type="text"
+                            placeholder={f.placeholder}
+                            value={f.value}
+                            onChange={(e) => f.onChange(e.target.value)}
+                            style={{
+                              width: "100%",
+                              border: "none",
+                              outline: "none",
+                              fontSize: "14px",
+                              color: "var(--ink)",
+                              background: "transparent",
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
 
-                {activeTab !== "hourly" && (
+                  {SINGLE_PAGE && (
+                    <div className="flex gap-3">
+                      {[
+                        { id: "email", label: "Email", type: "email", value: email, onChange: setEmail, placeholder: "your@email.com" },
+                        { id: "phone", label: "Telephone", type: "tel", value: phone, onChange: setPhone, placeholder: "+1 (212) 000-0000" },
+                      ].map((f) => (
+                        <div
+                          key={f.id}
+                          style={{
+                            flex: 1,
+                            border: "1px solid var(--line)",
+                            borderRadius: "6px",
+                            padding: "12px 14px",
+                          }}
+                        >
+                          <label
+                            htmlFor={f.id}
+                            style={{
+                              fontSize: "9px",
+                              letterSpacing: "0.16em",
+                              textTransform: "uppercase",
+                              color: "var(--ink-4)",
+                              display: "block",
+                              marginBottom: "4px",
+                              fontFamily: "var(--font-jetbrains), ui-monospace, monospace",
+                            }}
+                          >
+                            {f.label}
+                          </label>
+                          <input
+                            id={f.id}
+                            type={f.type}
+                            placeholder={f.placeholder}
+                            value={f.value}
+                            onChange={(e) => f.onChange(e.target.value)}
+                            style={{
+                              width: "100%",
+                              border: "none",
+                              outline: "none",
+                              fontSize: "14px",
+                              color: "var(--ink)",
+                              background: "transparent",
+                            }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
                   <div
                     style={{
                       border: "1px solid var(--line)",
@@ -235,18 +393,17 @@ export default function HeroSection() {
                         color: "var(--ink-4)",
                         display: "block",
                         marginBottom: "4px",
-                        fontFamily:
-                          "var(--font-jetbrains), ui-monospace, monospace",
+                        fontFamily: "var(--font-jetbrains), ui-monospace, monospace",
                       }}
-                      htmlFor="destination"
+                      htmlFor="pickup"
                     >
-                      Destination
+                      Pickup Location
                     </label>
                     <input
-                      ref={destRef}
-                      id="destination"
+                      ref={pickupRef}
+                      id="pickup"
                       type="text"
-                      placeholder="Enter destination"
+                      placeholder="Enter pickup address"
                       autoComplete="off"
                       onFocus={enableMap}
                       style={{
@@ -259,59 +416,103 @@ export default function HeroSection() {
                       }}
                     />
                   </div>
-                )}
 
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <BrandDatePicker
-                    id="date"
-                    label="Date"
-                    value={date}
-                    onChange={setDate}
-                    minDate={today}
-                  />
-                  <BrandTimePicker
-                    id="time"
-                    label="Time"
-                    value={time}
-                    onChange={setTime}
-                  />
+                  {activeTab !== "hourly" && (
+                    <div
+                      style={{
+                        border: "1px solid var(--line)",
+                        borderRadius: "6px",
+                        padding: "12px 14px",
+                      }}
+                    >
+                      <label
+                        style={{
+                          fontSize: "9px",
+                          letterSpacing: "0.16em",
+                          textTransform: "uppercase",
+                          color: "var(--ink-4)",
+                          display: "block",
+                          marginBottom: "4px",
+                          fontFamily: "var(--font-jetbrains), ui-monospace, monospace",
+                        }}
+                        htmlFor="destination"
+                      >
+                        Destination
+                      </label>
+                      <input
+                        ref={destRef}
+                        id="destination"
+                        type="text"
+                        placeholder="Enter destination"
+                        autoComplete="off"
+                        onFocus={enableMap}
+                        style={{
+                          width: "100%",
+                          border: "none",
+                          outline: "none",
+                          fontSize: "14px",
+                          color: "var(--ink)",
+                          background: "transparent",
+                        }}
+                      />
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <BrandDatePicker
+                      id="date"
+                      label="Date"
+                      value={date}
+                      onChange={setDate}
+                      minDate={today}
+                    />
+                    <BrandTimePicker
+                      id="time"
+                      label="Time"
+                      value={time}
+                      onChange={setTime}
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
               {/* CTA button */}
-              <button
-                type="button"
-                onClick={handleGetPrices}
-                style={{
-                  marginTop: "16px",
-                  width: "100%",
-                  background: "var(--ink)",
-                  color: "#fff",
-                  borderRadius: "6px",
-                  padding: "15px",
-                  fontSize: "13px",
-                  fontWeight: 500,
-                  letterSpacing: "0.04em",
-                  textTransform: "uppercase",
-                  border: "none",
-                  cursor: "pointer",
-                  transition: "background 0.2s ease",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background =
-                    "var(--gold)";
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLButtonElement).style.background =
-                    "var(--ink)";
-                }}
-              >
-                Get my prices →
-              </button>
+              {!submitSuccess && (
+                <button
+                  type="button"
+                  onClick={SINGLE_PAGE ? handleBookNow : handleGetPrices}
+                  disabled={isSubmitting}
+                  style={{
+                    marginTop: "16px",
+                    width: "100%",
+                    background: "var(--ink)",
+                    color: "#fff",
+                    borderRadius: "6px",
+                    padding: "15px",
+                    fontSize: "13px",
+                    fontWeight: 500,
+                    letterSpacing: "0.04em",
+                    textTransform: "uppercase",
+                    border: "none",
+                    cursor: isSubmitting ? "wait" : "pointer",
+                    opacity: isSubmitting ? 0.7 : 1,
+                    transition: "background 0.2s ease, opacity 0.2s ease",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: "8px",
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSubmitting)
+                      (e.currentTarget as HTMLButtonElement).style.background = "var(--gold)";
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLButtonElement).style.background = "var(--ink)";
+                  }}
+                >
+                  {isSubmitting ? "Sending…" : SINGLE_PAGE ? "Book Now →" : "Get my prices →"}
+                </button>
+              )}
 
               {submitError && (
                 <div
